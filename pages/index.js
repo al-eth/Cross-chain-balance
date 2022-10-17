@@ -1,8 +1,111 @@
-import Head from 'next/head'
-import Image from 'next/image'
-import styles from '../styles/Home.module.css'
+import React, { useState, useEffect } from "react";
+import Head from "next/head";
+import Image from "next/image";
+import styles from "../styles/Home.module.css";
+import spin from "../assets/logo/Spinner-1s-200px.gif";
+import axios from "axios";
+import { ethers } from "ethers";
+import * as SolanaWeb3 from "@solana/web3.js";
 
 export default function Home() {
+  const [value, setValue] = useState("");
+  const [load, setLoad] = useState(false);
+  const [allBalance, setAllBalance] = useState([]);
+
+  async function getResolveAddress(name) {
+    setLoad(false);
+
+    let myAddr;
+    await axios
+      .get("https://api.namesof.xyz/v1/name/" + name)
+      .then(async res => {
+        myAddr = await res.data;
+      });
+
+    return myAddr;
+  }
+
+  function handleChange(event) {
+    setValue(event.target.value);
+  }
+
+  async function handleSubmit(event) {
+    alert("Le nom a été soumis : " + value);
+    event.preventDefault();
+    const addrr = await getResolveAddress(value);
+    getBalance(addrr);
+  }
+
+  async function getBalance(addr) {
+    // GET Balance ETH
+    //if (load) {
+    const provider = new ethers.providers.JsonRpcProvider(
+      "https://eth-mainnet.alchemyapi.io/v2/sQ7C1FlThvRp6pP6LNmsET8uI4U_fzeM"
+    );
+
+    console.log("first");
+
+    let oldArr = [];
+    try {
+      const addr_eth = addr
+        .filter(e => Object.keys(e)[0] == "ENS")
+        .map(e => e.ENS);
+
+      const balance_eth = await provider.getBalance(addr_eth[0]);
+
+      oldArr.push({
+        crypto: "ETH",
+        balance: ethers.utils.formatEther(balance_eth)
+      });
+    } catch (e) {
+      console.log(e);
+    }
+
+    console.log("second");
+
+    // GET Balance ELROND
+    try {
+      const addr_elrond = addr
+        .filter(e => Object.keys(e)[0] == "elrond")
+        .map(e => e.elrond);
+      await axios
+        .get("https://api.elrond.com/accounts/" + addr_elrond[0])
+        .then(res => {
+          const myBalance = res.data;
+          oldArr.push({
+            crypto: "EGLD",
+            balance: myBalance.balance
+          });
+        });
+    } catch (e) {
+      console.log(e);
+    }
+
+    //GET Balance Solana
+    try {
+      const addr_bonfida = addr
+        .filter(e => Object.keys(e)[0] == "bonfida")
+        .map(e => e.bonfida);
+
+      const connection = new SolanaWeb3.Connection(
+        SolanaWeb3.clusterApiUrl("mainnet-beta")
+      );
+      const publicKey = new SolanaWeb3.PublicKey(addr_bonfida[0]);
+      const balance_bon = await connection.getBalance(publicKey);
+      oldArr.push({
+        crypto: "Solana",
+        balance: balance_bon / SolanaWeb3.LAMPORTS_PER_SOL
+      });
+    } catch (e) {
+      console.log(e);
+    }
+    setAllBalance(oldArr);
+    console.log(oldArr);
+    setLoad(true);
+
+    //}
+  }
+
   return (
     <div className={styles.container}>
       <Head>
@@ -12,43 +115,45 @@ export default function Home() {
       </Head>
 
       <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
+        <h1 className="text-6xl font-bold pb-10">
+          Welcome to Cross chain balance
         </h1>
 
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
+        <p className="text-2xl pb-10">
+          This usage use <a href="https://www.namesof.xyz/">namesof service</a>
         </p>
 
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h2>Documentation &rarr;</h2>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h2>Learn &rarr;</h2>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/canary/examples"
-            className={styles.card}
-          >
-            <h2>Examples &rarr;</h2>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h2>Deploy &rarr;</h2>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
+        <form onSubmit={handleSubmit}>
+          <label className="text-xl">
+            Your name :
+            <input
+              className="mx-4 rounded-lg p-2"
+              type="text"
+              value={value}
+              onChange={handleChange}
+            />
+          </label>
+          <input
+            className="rounded-lg p-2 bg-orange "
+            type="submit"
+            value="Send"
+          />
+        </form>
+        <div className="grid grid-cols-2 gap-2">
+          {load ? (
+            allBalance.map(e => (
+              <a className={styles.card}>
+                <h2 className="text-2xl font-bold">Total balance {e.crypto}</h2>
+                <p className="text-center">
+                  {parseFloat(e.balance).toFixed(2)}
+                </p>
+              </a>
+            ))
+          ) : (
+            <div>
+              <img src={spin} />
+            </div>
+          )}
         </div>
       </main>
 
@@ -58,12 +163,12 @@ export default function Home() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Powered by{' '}
+          Powered by{" "}
           <span className={styles.logo}>
             <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
           </span>
         </a>
       </footer>
     </div>
-  )
+  );
 }
