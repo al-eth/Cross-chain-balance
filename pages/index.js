@@ -9,7 +9,7 @@ import * as SolanaWeb3 from "@solana/web3.js";
 
 export default function Home() {
   const [value, setValue] = useState("");
-  const [load, setLoad] = useState(false);
+  const [load, setLoad] = useState(true);
   const [allBalance, setAllBalance] = useState([]);
 
   async function getResolveAddress(name) {
@@ -30,7 +30,6 @@ export default function Home() {
   }
 
   async function handleSubmit(event) {
-    alert("Le nom a été soumis : " + value);
     event.preventDefault();
     const addrr = await getResolveAddress(value);
     getBalance(addrr);
@@ -39,11 +38,10 @@ export default function Home() {
   async function getBalance(addr) {
     // GET Balance ETH
     //if (load) {
-    const provider = new ethers.providers.JsonRpcProvider(
-      "https://eth-mainnet.alchemyapi.io/v2/sQ7C1FlThvRp6pP6LNmsET8uI4U_fzeM"
-    );
 
-    console.log("first");
+    const provider = new ethers.providers.JsonRpcProvider(
+      process.env.API_PROVIDER
+    );
 
     let oldArr = [];
     try {
@@ -61,8 +59,6 @@ export default function Home() {
       console.log(e);
     }
 
-    console.log("second");
-
     // GET Balance ELROND
     try {
       const addr_elrond = addr
@@ -74,7 +70,7 @@ export default function Home() {
           const myBalance = res.data;
           oldArr.push({
             crypto: "EGLD",
-            balance: myBalance.balance
+            balance: myBalance.balance / 10 ** 17
           });
         });
     } catch (e) {
@@ -124,36 +120,41 @@ export default function Home() {
         </p>
 
         <form onSubmit={handleSubmit}>
-          <label className="text-xl">
+          <label className="text-2xl">
             Your name :
             <input
-              className="mx-4 rounded-lg p-2"
+              className="mx-4 rounded-lg p-2 text-2xl"
               type="text"
               value={value}
               onChange={handleChange}
             />
           </label>
           <input
-            className="rounded-lg p-2 bg-orange "
+            className="rounded-lg p-2 bg-orange text-2xl"
             type="submit"
             value="Send"
           />
         </form>
-        <div className="grid grid-cols-2 gap-2">
-          {load ? (
-            allBalance.map(e => (
-              <a className={styles.card}>
-                <h2 className="text-2xl font-bold">Total balance {e.crypto}</h2>
-                <p className="text-center">
-                  {parseFloat(e.balance).toFixed(2)}
-                </p>
-              </a>
-            ))
-          ) : (
-            <div>
-              <img src={spin} />
-            </div>
-          )}
+
+        <div>
+          <div className="grid grid-cols-2 gap-2 pt-8">
+            {load ? (
+              allBalance.map(e => (
+                <a className={styles.card}>
+                  <h2 className="text-3xl font-bold">
+                    Total balance {e.crypto}
+                  </h2>
+                  <p className="text-center text-2xl">
+                    {parseFloat(e.balance).toFixed(2)}
+                  </p>
+                </a>
+              ))
+            ) : (
+              <div className="w-28 pt-4 ">
+                <Image src={spin} />
+              </div>
+            )}{" "}
+          </div>
         </div>
       </main>
 
